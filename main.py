@@ -625,99 +625,46 @@ def convert_data_pwn_prediction(msg):
 # NL - HWL data ###################################################################################################
 
 def convert_data_pwn_hwl(data):
-
     data_list = []
 
-    SDM_COMPONENTS = {
-        "Cl": "Cl-",
-        "fluoride": "fluoride",
-        "F": "fluoride",
-        "NO3": "NO3",
-        "NH4": "NH4",
-        "NH3": "NH3",
-        "PO4": "PO4",
-        "pH": "pH",
-        "O2": "O2",
-        "cod": "cod",
-        "bod": "bod",
-        "tds": "tds",
-        "tss": "tss",
-        "turbidity": "turbidity",
-        "salinity": "salinity",
-        "conductivity": "conductivity",
-        "orp": "orp",
-        "alkalinity": "alkalinity",
-        "Chla": "Chla",
-        "PE": "PE",
-        "PC": "PC",
-        "TKN": "TKN",
-        "NO2": "NO2",
-        "N-TOT": "N-TOT",
-        "P-TOT": "P-TOT",
-        "P-PO4": "P-PO4",
-        "Al": "Al",
-        "As": "As",
-        "B": "B",
-        "Ba": "Ba",
-        "Cd": "Cd",
-        "Cr": "Cr",
-        "Cr-III": "Cr-III",
-        "Cr-VI": "Cr-VI",
-        "Cu": "Cu",
-        "Fe": "Fe",
-        "Hg": "Hg",
-        "THC": "THC",
-        "Ni": "Ni",
-        "TO": "TO",
-        "Pb": "Pb",
-        "Se": "Se",
-        "Sn": "Sn",
-        "sulphate": "sulphate",
-        "sulphite": "sulphite",
-        "anionic-surfactants": "anionic-surfactants",
-        "cationic-surfactants": "cationic-surfactants",
-        "non-ionic-surfactants": "non-ionic-surfactants",
-        "total-surfactants": "total-surfactants",
-        "Zn": "Zn",
-        "enterococci": "enterococci",
-        "escherichiaColi": "escherichiaColi"
-    }
-
     for obj in data:
-        prod_code = obj['BK_HWLProdDist']
-        id = obj['ID']
+        id = obj['id']
         analysis_date = obj['Analysedatum']
-        sample_code = obj['Monstercode']
         sample_date = obj['Monsterdatum']
         concentration = obj['Waarde']
         analysis_type = obj['Analyse']
         component = obj['Component']
         result = obj['Resultaat']
+        place = obj["Plaats"]
         sub_location = obj['Sublocatie']
-        sampling_point = obj['Monsterpunt']    
+        sampling_point = obj['Monsterpunt']
+        unit = obj['Eenheid']
 
-        formatted_analysis_date = analysis_date + ".000+00:00Z"
         formatted_sample_date = sample_date + ".000+00:00Z"
+        formatted_analysis_date = analysis_date + ".000+00:00Z"
+        coordinates = [5.264806, 52.750194]
+
+        # Create measurand entry
+        # measurand_entry = f"{component}, {concentration}, {unit}, {analysis_type} concentration analysis"
 
         # Convert data to NGSI-LD format
         converted_data = {
-            "id": f"urn:ngsi-ld:WaterQualityObserved:{prod_code}-{id}-{sample_code}",
-            "type": f"WaterQualityObserved:{analysis_type} analysis.",
+            "id": f"urn:ngsi-ld:WaterQualityObserved: NL-HWL: {place}-{sub_location}-{sampling_point}", #place may change?
+            "type": "WaterQualityObserved",
             "dateObserved": formatted_sample_date,
             "location": {
                 "type": "Point",
-                "coordinates": ""  # Coordinates should be assigned here if needed
+                "coordinates": coordinates
             },
             "dataProvider": "PWN",
-            "description": result,
+            "description": f"{result} (ID: {id}, Analyzed on {formatted_analysis_date}. Units: {unit}).",
+            "componentAnalyzed ": component, #Need to be added in the SDM, attribute name may change
+            "componentName ": analysis_type, #Need to be added in the SDM, attribute name may change
+            "concentration": concentration,  #Need to be added in the SDM, attribute name may change            
             "@context": [
                 "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
             ]
         }
-
-        # Check if the component exists in SDM_COMPONENTS before adding
-        if component in SDM_COMPONENTS:
-            converted_data[SDM_COMPONENTS[component]] = concentration
 
         data_list.append(converted_data)
 
@@ -729,26 +676,59 @@ def convert_data_pwn_hwl(data):
 
 # NL - IOT sensor ferryboat data ###################################################################################################
 
-def convert_data_iot_sensor(data):
+def convert_data_iot_sensor(data_list):
+    converted_data_list = []  # Store converted documents
+
+    for data in data_list:  # Loop through each dictionary
+        lat = data["position"]["context"]["lat"]
+        long = data["position"]["context"]["lng"]
+        coordinates = [long, lat]  # Longitude first for correct geo format
+        cond_value = data["conductivity"]
+        course = data["course"]
+        speed = data["speed"]
+
+        # Convert data to NGSI-LD format
+        converted_data = {
+            "id": "urn:ngsi-ld:WaterQualityObserved: NL-PWN-ferryboat-sensor",
+            "type": "WaterQualityObserved",
+            "location": {
+                "type": "Point",
+                "coordinates": coordinates
+            },
+            "dataProvider": "PWN", 
+            "conductivity": cond_value,
+            "description": f"Ferryboat course: {course} deg, speed: {speed}",
+            "@context": [
+                "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
+            ]
+        }   
+
+        converted_data_list.append(converted_data)  # Append to result list
+
+    return converted_data_list  # Return list of converted documents
+
     data_list = []
     
     lat = data["position"]["context"]["lat"]
     long = data["position"]["context"]["lng"]
-    coordinates = [long, lat]  # Reversed order for correct geo format (longitude first)
 
+    coordinates = [long, lat]  # Reversed order for correct geo format (longitude first)
     cond_value = data["conductivity"]
+    course = data["course"]
+    speed = data["speed"]
 
     #convert data to ngsi-ld
     converted_data = {
-            "id": "urn:ngsi-ld:WaterQualityObserved: ",
+            "id": "urn:ngsi-ld:WaterQualityObserved: NL-PWN-ferryboat-sensor",
             "type": "WaterQualityObserved",
-            "dateObserved": "",
+            #"dateCreated": "", # Date created not provided
             "location": {
                 "type": "Point",
                 "coordinates": coordinates
                 },
-            "dataProvider": "", #KWR or PWN ??
+            "dataProvider": "PWN", 
             "conductivity": cond_value,
+            "description": f"Ferryboat course: {course} deg, speed: {speed}",
             "@context": [
     "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
   ]
@@ -762,6 +742,181 @@ def convert_data_iot_sensor(data):
 
     return data_list
 
+# NL - RIWA-Rijn data ###################################################################################################
+
+def convert_data_riwa_rijn(data):
+    data_list = []
+
+    for obj in data:
+        x = obj["x-coördinaat"]
+        y = obj["y-coördinaat"]
+        location_code = obj["rp"]
+        location_name = obj["omschrijving"]
+        parameter = obj["par"]
+        NL_name = obj["naam"]
+        ENG_name = obj["Engelse naam"]
+        cas_number = obj["cas-number"]
+        date = obj["datum"]
+        limit = obj["teken"]
+        value = obj["waarde"]
+        unit = obj["dimensie"]
+
+    formatted_date = date + ".000+00:00Z"
+
+    #measurand_entry = f"{NL_name}, {value}, {unit}, {ENG_name} concentration (CAS: {cas_number}, Parameter: {parameter})"
+
+    if limit == "+":
+        description = "(+) Measurement was above the reporting limit."
+    elif limit == "<":
+        description = "(<) Measurement was below the reporting limit."
+    else:
+        description = "Measurement limit information not available."
+
+    description = description + f" Units: {unit}. CAS: {cas_number}, Parameter: {parameter}"
+
+    #convert data to ngsi-ld
+    converted_data = {
+            "id": f"urn:ngsi-ld:WaterQualityObserved: NL-PWN-RIWA-Rijn-{location_code}-{location_name}",
+            "type": "WaterQualityObserved",
+            "dateObserved": formatted_date, 
+            "dataProvider": "PWN",
+            "componentName ": NL_name, #Need to be added in the SDM, attribute name may change
+            "measurand ": [ENG_name], #Need to be added in the SDM, attribute name may change
+            "concentration": value,  #Need to be added in the SDM, attribute name may change 
+            "description": description,
+            "@context": [
+    "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
+  ]
+        }
+
+    source_crs = pyproj.CRS("EPSG:25831")
+    target_crs = pyproj.CRS("EPSG:4326")
+    transformer = pyproj.Transformer.from_crs(source_crs, target_crs, always_xy=True)
+    if x and y:
+            lon, lat = transformer.transform(x, y)
+            coordinates = [lon, lat]
+                
+            converted_data["location"] = {
+                "type": "Point",
+                "coordinates": coordinates
+            }
+
+            data_list.append(converted_data)
+    
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+
+    return data_list
+
+# NL - PA data from water sensors ###################################################################################################
+
+def convert_data_pa_water_sensors(data):
+    data_list = []
+
+    for obj in data:
+        sensor_name = obj['NAME']
+        measured_value = obj['IP_TREND_VALUE']
+        date = obj['IP_TREND_TIME']
+        quality_result = obj['IP_INPUT_QUALITY']
+        description = obj['IP_DESCRIPTION']
+        unit = obj['IP_ENG_UNITS']
+
+        formatted_timestamp = date + "Z"
+        coordinates = [0.0, 0.0]  # Placeholder for sensor-specific coordinates
+
+        sensor_coordinates = {
+            "sensor1": [4.895168, 52.370216],  # Example coordinates for sensor1
+            "sensor2": [5.121420, 52.090736],  # Example coordinates for sensor2
+            "sensor3": [4.47917, 51.9225]      # Example coordinates for sensor3
+        }
+
+        if sensor_name in sensor_coordinates:
+            coordinates = sensor_coordinates[sensor_name]
+        else:
+            coordinates = [0.0, 0.0]
+            print(f"Warning: Unknown sensor '{sensor_name}', using default coordinates.")
+
+        description =  f"Result: {quality_result}. Measurement from sensor: {sensor_name}, {description}. Units: {unit}."
+
+        # Convert data to NGSI-LD format
+        converted_data = {
+            "id": f"urn:ngsi-ld:WaterQualityObserved:NL-PWN-PA-Water-Sensors",
+            "type": "WaterQualityObserved",
+            "dateObserved": formatted_timestamp,
+            "location": {
+                "type": "Point",
+                "coordinates": coordinates
+            },
+            "dataProvider": "PWN",
+            "conductivity": measured_value,
+            "description": description,
+            "@context": [
+                "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
+            ]
+        }
+
+        data_list.append(converted_data)
+
+    return data_list
+
+
+# NL - PA data from wind sensors ###################################################################################################
+
+def convert_data_pa_wind_sensors(data):
+    data_list = []
+
+    for obj in data:
+        sensor_name = obj['NAME']
+        measured_value = obj['IP_TREND_VALUE']
+        date = obj['IP_TREND_TIME']
+        quality_result = obj['IP_INPUT_QUALITY']
+        description = obj['IP_DESCRIPTION']
+        unit = obj['IP_ENG_UNITS']
+
+        formatted_timestamp = date + "Z"
+        coordinates = [0.0, 0.0]  # Placeholder for sensor-specific coordinates
+
+        sensor_coordinates = {
+            "sensor1": [4.895168, 52.370216],  # Example coordinates for sensor1
+            "sensor2": [5.121420, 52.090736],  # Example coordinates for sensor2
+            "sensor3": [4.47917, 51.9225]      # Example coordinates for sensor3
+        }
+
+        if sensor_name in sensor_coordinates:
+            coordinates = sensor_coordinates[sensor_name]
+        else:
+            coordinates = [0.0, 0.0]
+            print(f"Warning: Unknown sensor '{sensor_name}', using default coordinates.")
+
+        converted_data = {
+            "id": f"urn:ngsi-ld:WeatherObserved:NL-PWN-PA-Wind-Sensors",
+            "type": "WeatherObserved",
+            "dateObserved": formatted_timestamp,
+            "location": {
+                "type": "Point",
+                "coordinates": coordinates
+            },
+            "dataProvider": "PWN",
+            "description": f"Result: {quality_result}. Measurement from sensor: {sensor_name}, {description}. Units: {unit}.",
+            "@context": [
+                "https://raw.githubusercontent.com/smart-data-models/dataModel.Weather/master/context.jsonld"
+            ]
+        }
+
+        # Determine the correct attribute based on description and append it
+        attribute_mapping = {
+            "Windstoten": "gustSpeed",
+            "Windsnelheid": "windSpeed",
+            "Windrichting": "windDirection"
+        }
+
+        attribute_key = attribute_mapping.get(description)
+        if attribute_key:
+            converted_data[attribute_key] = measured_value
+
+        data_list.append(converted_data)
+
+    return data_list
 
 # UK - SWW - env-data ##############################################################################################
 
