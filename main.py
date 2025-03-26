@@ -16,12 +16,14 @@ def endpoint():
     try:
         wdme_msg = request.get_json()
 
-        if 'datasource' in wdme_msg or 'entityId' in wdme_msg:
+        if 'datasource' in wdme_msg or 'entityId' in wdme_msg or 'resource_id' in wdme_msg:
 
             if 'datasource' in wdme_msg: 
                 datasource = wdme_msg['datasource']
             elif 'entityId' in wdme_msg:
                 datasource = wdme_msg['entityId']
+            elif 'resource_id' in wdme_msg:
+                datasource = wdme_msg['resource_id'] 
 
             if datasource == "KNMI":
                 converted_data = convert_data_pwn_knmi(wdme_msg["data"])
@@ -56,13 +58,54 @@ def endpoint():
                 return jsonify(response)
             
             elif datasource == "PWN-PREDICTION":
-                converted_data = convert_data_pwn_prediction(wdme_msg)
+                converted_data = convert_data_pwn_prediction(wdme_msg["data"])
                 response = {
                     'message': 'Data from PWN received and converted successfully',
                     'converted_data': converted_data
                 }
                 return jsonify(response)
             
+            elif datasource == "bf191342-dfa4-42c6-aaf3-0986d3cf7c4a": # HWL resource id
+                converted_data = convert_data_pwn_hwl(wdme_msg["data"])
+                response = {
+                    'message': 'Data from HWL received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
+            elif datasource == "": # IoT ferryboat sensor resource id
+                converted_data = convert_data_iot_sensor(wdme_msg["data"])
+                response = {
+                    'message': 'Data from IoT ferryboat sensor received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
+            elif datasource == "": # Riwa Rijn resource id
+                converted_data = convert_data_riwa_rijn(wdme_msg["data"])
+                response = {
+                    'message': 'Data from Riwa Rijn received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
+            elif datasource == "cac83e99-5565-4f51-8331-593be17cabd6": # PA resource id
+                first_sensor_name = wdme_msg['data'][0].get('NAME', '')
+                
+                water_sensors = {"ANWYAA_QT10", "ANWYAA_QT20", "AWWYIB_QT40"}
+                wind_sensors = {"AWA0XT_WT10", "AWA0XT_ST10", "AWA0XT_GT10"}
+
+                if first_sensor_name in water_sensors:
+                    converted_data = convert_data_pa_water_sensors(wdme_msg["data"])
+                    response_message = 'Data from PA water sensors received and converted successfully'
+                elif first_sensor_name in wind_sensors:
+                    converted_data = convert_data_pa_wind_sensors(wdme_msg["data"])
+                    response_message = 'Data from PA wind sensors received and converted successfully'
+                else:
+                    return jsonify({'error': f'Unknown sensor name: {first_sensor_name}'}), 400
+                
+                response = {
+                    'message': response_message,
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
             elif datasource == "EnvironmentDataAgency":
                 converted_data = convert_data_sww_envdata(wdme_msg["data"])
                 response = {
@@ -691,6 +734,7 @@ def convert_data_iot_sensor(data_list):
         converted_data = {
             "id": "urn:ngsi-ld:WaterQualityObserved: NL-PWN-ferryboat-sensor",
             "type": "WaterQualityObserved",
+            #"dateCreated": "", # Date created not provided yet
             "location": {
                 "type": "Point",
                 "coordinates": coordinates
@@ -706,41 +750,6 @@ def convert_data_iot_sensor(data_list):
         converted_data_list.append(converted_data)  # Append to result list
 
     return converted_data_list  # Return list of converted documents
-
-    data_list = []
-    
-    lat = data["position"]["context"]["lat"]
-    long = data["position"]["context"]["lng"]
-
-    coordinates = [long, lat]  # Reversed order for correct geo format (longitude first)
-    cond_value = data["conductivity"]
-    course = data["course"]
-    speed = data["speed"]
-
-    #convert data to ngsi-ld
-    converted_data = {
-            "id": "urn:ngsi-ld:WaterQualityObserved: NL-PWN-ferryboat-sensor",
-            "type": "WaterQualityObserved",
-            #"dateCreated": "", # Date created not provided
-            "location": {
-                "type": "Point",
-                "coordinates": coordinates
-                },
-            "dataProvider": "PWN", 
-            "conductivity": cond_value,
-            "description": f"Ferryboat course: {course} deg, speed: {speed}",
-            "@context": [
-    "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
-  ]
-        }   
-
-    data_list.append(converted_data)
-        
-
-    if 'invalid' in data:
-        raise ValueError('Invalid data')
-
-    return data_list
 
 # NL - RIWA-Rijn data ###################################################################################################
 
@@ -822,19 +831,7 @@ def convert_data_pa_water_sensors(data):
         unit = obj['IP_ENG_UNITS']
 
         formatted_timestamp = date + "Z"
-        coordinates = [0.0, 0.0]  # Placeholder for sensor-specific coordinates
-
-        sensor_coordinates = {
-            "sensor1": [4.895168, 52.370216],  # Example coordinates for sensor1
-            "sensor2": [5.121420, 52.090736],  # Example coordinates for sensor2
-            "sensor3": [4.47917, 51.9225]      # Example coordinates for sensor3
-        }
-
-        if sensor_name in sensor_coordinates:
-            coordinates = sensor_coordinates[sensor_name]
-        else:
-            coordinates = [0.0, 0.0]
-            print(f"Warning: Unknown sensor '{sensor_name}', using default coordinates.")
+        coordinates = [5.264806, 52.750194]
 
         description =  f"Result: {quality_result}. Measurement from sensor: {sensor_name}, {description}. Units: {unit}."
 
@@ -874,19 +871,7 @@ def convert_data_pa_wind_sensors(data):
         unit = obj['IP_ENG_UNITS']
 
         formatted_timestamp = date + "Z"
-        coordinates = [0.0, 0.0]  # Placeholder for sensor-specific coordinates
-
-        sensor_coordinates = {
-            "sensor1": [4.895168, 52.370216],  # Example coordinates for sensor1
-            "sensor2": [5.121420, 52.090736],  # Example coordinates for sensor2
-            "sensor3": [4.47917, 51.9225]      # Example coordinates for sensor3
-        }
-
-        if sensor_name in sensor_coordinates:
-            coordinates = sensor_coordinates[sensor_name]
-        else:
-            coordinates = [0.0, 0.0]
-            print(f"Warning: Unknown sensor '{sensor_name}', using default coordinates.")
+        coordinates = [5.264806, 52.750194]
 
         converted_data = {
             "id": f"urn:ngsi-ld:WeatherObserved:NL-PWN-PA-Wind-Sensors",
