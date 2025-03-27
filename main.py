@@ -16,14 +16,14 @@ def endpoint():
     try:
         wdme_msg = request.get_json()
 
-        if 'datasource' in wdme_msg or 'entityId' in wdme_msg or 'resource_id' in wdme_msg:
+        if 'datasource' in wdme_msg or 'entityId' in wdme_msg or 'resourceid' in wdme_msg:
 
             if 'datasource' in wdme_msg: 
                 datasource = wdme_msg['datasource']
             elif 'entityId' in wdme_msg:
                 datasource = wdme_msg['entityId']
-            elif 'resource_id' in wdme_msg:
-                datasource = wdme_msg['resource_id'] 
+            elif 'resourceid' in wdme_msg:
+                datasource = wdme_msg['resourceid'] 
 
             if datasource == "KNMI":
                 converted_data = convert_data_pwn_knmi(wdme_msg["data"])
@@ -700,7 +700,7 @@ def convert_data_pwn_hwl(data):
                 "coordinates": coordinates
             },
             "dataProvider": "PWN",
-            "description": f"{result} (ID: {id}, Analyzed on {formatted_analysis_date}. Units: {unit}).",
+            "description": f"Result: {result} (ID: {id}, Analyzed on {formatted_analysis_date}. Units: {unit}).",
             "componentAnalyzed ": component, #Need to be added in the SDM, attribute name may change
             "componentName ": analysis_type, #Need to be added in the SDM, attribute name may change
             "concentration": concentration,  #Need to be added in the SDM, attribute name may change            
