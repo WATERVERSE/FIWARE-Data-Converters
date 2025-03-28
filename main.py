@@ -72,14 +72,14 @@ def endpoint():
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-            elif datasource == "": # IoT ferryboat sensor resource id
+            elif datasource == "iot_ferryboat_sensor": # IoT ferryboat sensor resource id
                 converted_data = convert_data_iot_sensor(wdme_msg["data"])
                 response = {
                     'message': 'Data from IoT ferryboat sensor received and converted successfully',
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-            elif datasource == "": # Riwa Rijn resource id
+            elif datasource == "84e5b237-4244-48fb-8376-0943271c0f90": # Riwa Rijn resource id
                 converted_data = convert_data_riwa_rijn(wdme_msg["data"])
                 response = {
                     'message': 'Data from Riwa Rijn received and converted successfully',
@@ -688,10 +688,25 @@ def convert_data_pwn_hwl(data):
             formatted_sample_date = f"{sample_date}.000+00:00Z"
             formatted_analysis_date = f"{analysis_date}.000+00:00Z"
 
-            # Skip records with missing critical fields
-            if not all([id, analysis_date, sample_date, concentration, component, result, place, sub_location, sampling_point, unit]):
-                app.logger.warning(f"Skipping record due to missing critical fields: {obj}")
-                continue
+            # Check for missing critical fields and log details
+            required_fields = {
+                'id': id,
+                'Analysedatum': analysis_date,
+                'Monsterdatum': sample_date,
+                'Waarde': concentration,
+                'Analyse': analysis_type,
+                'Component': component,
+                'Resultaat': result,
+                'Plaats': place,
+                'Sublocatie': sub_location,
+                'Monsterpunt': sampling_point,
+                'Eenheid': unit
+            }
+
+            missing_fields = [field for field, value in required_fields.items() if value is None or value == "" or "unknown" in str(value)]
+            if missing_fields:
+                app.logger.warning(f"Skipping record due to missing fields: {missing_fields}. Full record: {obj}")
+                continue  # Skip this record and move to the next one            
 
             # Convert data to NGSI-LD format
             converted_data = {
@@ -703,7 +718,7 @@ def convert_data_pwn_hwl(data):
                     "coordinates": [5.264806, 52.750194]
                 },
                 "dataProvider": "PWN",
-                "description": f"Result: {result} (ID: {id}, Analyzed on {formatted_analysis_date}. Units: {unit}).",
+                "description": f"Result: {str(result)} (ID: {str(id)}, Analyzed on {str(formatted_analysis_date)}. Units: {str(unit)}).",
                 "componentAnalyzed ": component,
                 "componentName ": analysis_type,
                 "concentration": concentration,
@@ -714,7 +729,7 @@ def convert_data_pwn_hwl(data):
             data_list.append(converted_data)
 
         except Exception as e:
-            # Log the error and skip the problematic record
+            # Log the error and include the problematic record
             app.logger.error(f"Error processing record: {obj}. Error: {str(e)}")
             continue  # Continue processing the next record
 
@@ -726,31 +741,59 @@ def convert_data_iot_sensor(data_list):
     converted_data_list = []  # Store converted documents
 
     for data in data_list:  # Loop through each dictionary
-        lat = data["position"]["context"]["lat"]
-        long = data["position"]["context"]["lng"]
-        coordinates = [long, lat]  # Longitude first for correct geo format
-        cond_value = data["conductivity"]
-        course = data["course"]
-        speed = data["speed"]
+        try:
+            # Extract fields from the record with default values
+            lat = data.get("position", {}).get("context", {}).get("lat", "unknown_lat")
+            long = data.get("position", {}).get("context", {}).get("lng", "unknown_long")
+            coordinates = [long, lat]  # Longitude first for correct geo format
 
-        # Convert data to NGSI-LD format
-        converted_data = {
-            "id": "urn:ngsi-ld:WaterQualityObserved: NL-PWN-ferryboat-sensor",
-            "type": "WaterQualityObserved",
-            #"dateCreated": "", # Date created not provided yet
-            "location": {
-                "type": "Point",
-                "coordinates": coordinates
-            },
-            "dataProvider": "PWN", 
-            "conductivity": cond_value,
-            "description": f"Ferryboat course: {course} deg, speed: {speed}",
-            "@context": [
-                "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
-            ]
-        }   
+            cond_value = data.get("conductivity", "unknown_conductivity")
+            course = data.get("course", "unknown_course")
+            speed = data.get("speed", "unknown_speed")
 
-        converted_data_list.append(converted_data)  # Append to result list
+            # Check for missing critical fields and log details
+            required_fields = {
+                'position': data.get("position"),
+                'conductivity': cond_value,
+                'course': course,
+                'speed': speed
+            }
+
+            missing_fields = [field for field, value in required_fields.items() if not value or "unknown" in str(value)]
+            if missing_fields:
+                app.logger.warning(f"Skipping record due to missing fields: {missing_fields}. Full record: {data}")
+                continue  # Skip this record and move to the next one
+
+            # Ensure latitude and longitude are valid floats
+            try:
+                coordinates = [float(long), float(lat)]
+            except ValueError:
+                app.logger.error(f"Invalid coordinates: {coordinates}. Full record: {data}")
+                continue  # Skip this record if coordinates are invalid
+
+            # Convert data to NGSI-LD format
+            converted_data = {
+                "id": f"urn:ngsi-ld:WaterQualityObserved:NL-PWN-ferryboat-sensor-{course}-{speed}",
+                "type": "WaterQualityObserved",
+                "dateCreated": None,  # Date created not provided yet
+                "location": {
+                    "type": "Point",
+                    "coordinates": coordinates
+                },
+                "dataProvider": "PWN",
+                "conductivity": cond_value,
+                "description": f"Ferryboat course: {str(course)} deg, speed: {str(speed)} knots.",
+                "@context": [
+                    "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
+                ]
+            }
+
+            converted_data_list.append(converted_data)  # Append to result list
+
+        except Exception as e:
+            # Log the error and skip the problematic record
+            app.logger.error(f"Error processing record: {data}. Error: {str(e)}")
+            continue  # Continue processing the next record
 
     return converted_data_list  # Return list of converted documents
 
@@ -760,63 +803,91 @@ def convert_data_riwa_rijn(data):
     data_list = []
 
     for obj in data:
-        x = obj["x-coördinaat"]
-        y = obj["y-coördinaat"]
-        location_code = obj["rp"]
-        location_name = obj["omschrijving"]
-        parameter = obj["par"]
-        NL_name = obj["naam"]
-        ENG_name = obj["Engelse naam"]
-        cas_number = obj["cas-number"]
-        date = obj["datum"]
-        limit = obj["teken"]
-        value = obj["waarde"]
-        unit = obj["dimensie"]
+        try:
+            # Extract fields from the record with default values
+            x = obj.get("x-coördinaat", "unknown_x")
+            y = obj.get("y-coördinaat", "unknown_y")
+            location_code = obj.get("rp", "unknown_rp")
+            location_name = obj.get("omschrijving", "unknown_location")
+            parameter = obj.get("par", "unknown_parameter")
+            NL_name = obj.get("naam", "unknown_name")
+            ENG_name = obj.get("Engelse naam", "unknown_eng_name")
+            cas_number = obj.get("cas-nummer", "unknown_cas")
+            date = obj.get("datum", "unknown_date")
+            limit = obj.get("teken", "unknown_limit")
+            value = obj.get("waarde", "unknown_value")
+            unit = obj.get("dimensie", "unknown_unit")
 
-    formatted_date = date + ".000+00:00Z"
-
-    #measurand_entry = f"{NL_name}, {value}, {unit}, {ENG_name} concentration (CAS: {cas_number}, Parameter: {parameter})"
-
-    if limit == "+":
-        description = "(+) Measurement was above the reporting limit."
-    elif limit == "<":
-        description = "(<) Measurement was below the reporting limit."
-    else:
-        description = "Measurement limit information not available."
-
-    description = description + f" Units: {unit}. CAS: {cas_number}, Parameter: {parameter}"
-
-    #convert data to ngsi-ld
-    converted_data = {
-            "id": f"urn:ngsi-ld:WaterQualityObserved: NL-PWN-RIWA-Rijn-{location_code}-{location_name}",
-            "type": "WaterQualityObserved",
-            "dateObserved": formatted_date, 
-            "dataProvider": "PWN",
-            "componentName ": NL_name, #Need to be added in the SDM, attribute name may change
-            "measurand ": [ENG_name], #Need to be added in the SDM, attribute name may change
-            "concentration": value,  #Need to be added in the SDM, attribute name may change 
-            "description": description,
-            "@context": [
-    "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
-  ]
-        }
-
-    source_crs = pyproj.CRS("EPSG:25831")
-    target_crs = pyproj.CRS("EPSG:4326")
-    transformer = pyproj.Transformer.from_crs(source_crs, target_crs, always_xy=True)
-    if x and y:
-            lon, lat = transformer.transform(x, y)
-            coordinates = [lon, lat]
-                
-            converted_data["location"] = {
-                "type": "Point",
-                "coordinates": coordinates
+            # Check for missing critical fields and log details
+            required_fields = {
+                'x-coördinaat': x,
+                'y-coördinaat': y,
+                'rp': location_code,
+                'naam': NL_name,
+                'Engelse naam': ENG_name,
+                'cas-number': cas_number,
+                'datum': date,
+                'waarde': value,
+                'dimensie': unit
             }
 
+            missing_fields = [field for field, value in required_fields.items() if not value or "unknown" in str(value)]
+            if missing_fields:
+                app.logger.warning(f"Skipping record due to missing fields: {missing_fields}. Full record: {obj}")
+                continue  # Skip this record and move to the next one
+
+            # Format date safely
+            formatted_date = f"{date}.000+00:00Z"
+
+            # Determine the description based on the limit field
+            if limit == "+":
+                description = "(+) Measurement was above the reporting limit."
+            elif limit == "<":
+                description = "(<) Measurement was below the reporting limit."
+            else:
+                description = "Measurement limit information not available."
+
+            description += f" Units: {unit}. CAS: {cas_number}, Parameter: {parameter}"
+
+            # Convert data to NGSI-LD format
+            converted_data = {
+                "id": f"urn:ngsi-ld:WaterQualityObserved:NL-PWN-RIWA-Rijn-{location_code}-{location_name}",
+                "type": "WaterQualityObserved",
+                "dateObserved": formatted_date,
+                "dataProvider": "PWN",
+                "componentName": NL_name,  # Need to be added in the SDM, attribute name may change
+                "measurand": [ENG_name],  # Need to be added in the SDM, attribute name may change
+                "concentration": value,  # Need to be added in the SDM, attribute name may change
+                "description": description,
+                "@context": [
+                    "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
+                ]
+            }
+
+            # Transform coordinates if x and y are valid
+            if x != "unknown_x" and y != "unknown_y":
+                try:
+                    source_crs = pyproj.CRS("EPSG:25831")
+                    target_crs = pyproj.CRS("EPSG:4326")
+                    transformer = pyproj.Transformer.from_crs(source_crs, target_crs, always_xy=True)
+                    lon, lat = transformer.transform(float(x), float(y))
+                    coordinates = [lon, lat]
+
+                    converted_data["location"] = {
+                        "type": "Point",
+                        "coordinates": coordinates
+                    }
+                except (ValueError, pyproj.exceptions.ProjError) as e:
+                    app.logger.error(f"Invalid coordinates: x={x}, y={y}. Full record: {obj}. Error: {str(e)}")
+                    continue  # Skip this record if coordinates are invalid
+
+            # Append the converted data to the list
             data_list.append(converted_data)
-    
-    if 'invalid' in data:
-        raise ValueError('Invalid data')
+
+        except Exception as e:
+            # Log the error and skip the problematic record
+            app.logger.error(f"Error processing record: {obj}. Error: {str(e)}")
+            continue  # Continue processing the next record
 
     return data_list
 
@@ -826,39 +897,64 @@ def convert_data_pa_water_sensors(data):
     data_list = []
 
     for obj in data:
-        sensor_name = obj['NAME']
-        measured_value = obj['IP_TREND_VALUE']
-        date = obj['IP_TREND_TIME']
-        quality_result = obj['IP_INPUT_QUALITY']
-        description = obj['IP_DESCRIPTION']
-        unit = obj['IP_ENG_UNITS']
+        try:
+            # Extract fields from the record with default values
+            sensor_name = obj.get('NAME', 'unknown_sensor')
+            measured_value = obj.get('IP_TREND_VALUE', 'unknown_value')
+            date = obj.get('IP_TREND_TIME', 'unknown_date')
+            quality_result = obj.get('IP_INPUT_QUALITY', 'unknown_quality')
+            description = obj.get('IP_DESCRIPTION', 'unknown_description')
+            unit = obj.get('IP_ENG_UNITS', 'unknown_unit')
 
-        formatted_timestamp = date + "Z"
-        coordinates = [5.264806, 52.750194]
+            # Check for missing critical fields and log details
+            required_fields = {
+                'NAME': sensor_name,
+                'IP_TREND_VALUE': measured_value,
+                'IP_TREND_TIME': date,
+                'IP_INPUT_QUALITY': quality_result,
+                'IP_DESCRIPTION': description,
+                'IP_ENG_UNITS': unit
+            }
 
-        description =  f"Result: {quality_result}. Measurement from sensor: {sensor_name}, {description}. Units: {unit}."
+            missing_fields = [field for field, value in required_fields.items() if not value or "unknown" in str(value)]
+            if missing_fields:
+                app.logger.warning(f"Skipping record due to missing fields: {missing_fields}. Full record: {obj}")
+                continue  # Skip this record and move to the next one
 
-        # Convert data to NGSI-LD format
-        converted_data = {
-            "id": f"urn:ngsi-ld:WaterQualityObserved:NL-PWN-PA-Water-Sensors",
-            "type": "WaterQualityObserved",
-            "dateObserved": formatted_timestamp,
-            "location": {
-                "type": "Point",
-                "coordinates": coordinates
-            },
-            "dataProvider": "PWN",
-            "conductivity": measured_value,
-            "description": description,
-            "@context": [
-                "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
-            ]
-        }
+            # Format timestamp safely
+            formatted_timestamp = date + "Z"
 
-        data_list.append(converted_data)
+            # Define default coordinates
+            coordinates = [5.264806, 52.750194]
+
+            # Create description string
+            description_text = f"Result: {quality_result}. Measurement from sensor: {sensor_name}, {description}. Units: {unit}."
+
+            # Convert data to NGSI-LD format
+            converted_data = {
+                "id": f"urn:ngsi-ld:WaterQualityObserved:NL-PWN-PA-Water-Sensors-{sensor_name}",
+                "type": "WaterQualityObserved",
+                "dateObserved": formatted_timestamp,
+                "location": {
+                    "type": "Point",
+                    "coordinates": coordinates
+                },
+                "dataProvider": "PWN",
+                "conductivity": measured_value,
+                "description": description_text,
+                "@context": [
+                    "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
+                ]
+            }
+
+            data_list.append(converted_data)
+
+        except Exception as e:
+            # Log the error and skip the problematic record
+            app.logger.error(f"Error processing record: {obj}. Error: {str(e)}")
+            continue  # Continue processing the next record
 
     return data_list
-
 
 # NL - PA data from wind sensors ###################################################################################################
 
@@ -866,43 +962,72 @@ def convert_data_pa_wind_sensors(data):
     data_list = []
 
     for obj in data:
-        sensor_name = obj['NAME']
-        measured_value = obj['IP_TREND_VALUE']
-        date = obj['IP_TREND_TIME']
-        quality_result = obj['IP_INPUT_QUALITY']
-        description = obj['IP_DESCRIPTION']
-        unit = obj['IP_ENG_UNITS']
+        try:
+            # Extract fields from the record with default values
+            sensor_name = obj.get('NAME', 'unknown_sensor')
+            measured_value = obj.get('IP_TREND_VALUE', 'unknown_value')
+            date = obj.get('IP_TREND_TIME', 'unknown_date')
+            quality_result = obj.get('IP_INPUT_QUALITY', 'unknown_quality')
+            description = obj.get('IP_DESCRIPTION', 'unknown_description')
+            unit = obj.get('IP_ENG_UNITS', 'unknown_unit')
 
-        formatted_timestamp = date + "Z"
-        coordinates = [5.264806, 52.750194]
+            # Check for missing critical fields and log details
+            required_fields = {
+                'NAME': sensor_name,
+                'IP_TREND_VALUE': measured_value,
+                'IP_TREND_TIME': date,
+                'IP_INPUT_QUALITY': quality_result,
+                'IP_DESCRIPTION': description,
+                'IP_ENG_UNITS': unit
+            }
 
-        converted_data = {
-            "id": f"urn:ngsi-ld:WeatherObserved:NL-PWN-PA-Wind-Sensors",
-            "type": "WeatherObserved",
-            "dateObserved": formatted_timestamp,
-            "location": {
-                "type": "Point",
-                "coordinates": coordinates
-            },
-            "dataProvider": "PWN",
-            "description": f"Result: {quality_result}. Measurement from sensor: {sensor_name}, {description}. Units: {unit}.",
-            "@context": [
-                "https://raw.githubusercontent.com/smart-data-models/dataModel.Weather/master/context.jsonld"
-            ]
-        }
+            missing_fields = [field for field, value in required_fields.items() if not value or "unknown" in str(value)]
+            if missing_fields:
+                app.logger.warning(f"Skipping record due to missing fields: {missing_fields}. Full record: {obj}")
+                continue  # Skip this record and move to the next one
 
-        # Determine the correct attribute based on description and append it
-        attribute_mapping = {
-            "Windstoten": "gustSpeed",
-            "Windsnelheid": "windSpeed",
-            "Windrichting": "windDirection"
-        }
+            # Format timestamp safely
+            formatted_timestamp = date + "Z"
 
-        attribute_key = attribute_mapping.get(description)
-        if attribute_key:
-            converted_data[attribute_key] = measured_value
+            # Define default coordinates
+            coordinates = [5.264806, 52.750194]
 
-        data_list.append(converted_data)
+            # Create description string
+            description_text = f"Result: {quality_result}. Measurement from sensor: {sensor_name}, {description}. Units: {unit}."
+
+            # Convert data to NGSI-LD format
+            converted_data = {
+                "id": f"urn:ngsi-ld:WeatherObserved:NL-PWN-PA-Wind-Sensors",
+                "type": "WeatherObserved",
+                "dateObserved": formatted_timestamp,
+                "location": {
+                    "type": "Point",
+                    "coordinates": coordinates
+                },
+                "dataProvider": "PWN",
+                "description": description_text,
+                "@context": [
+                    "https://raw.githubusercontent.com/smart-data-models/dataModel.Weather/master/context.jsonld"
+                ]
+            }
+
+            # Determine the correct attribute based on description and append it
+            attribute_mapping = {
+                "Windstoten": "gustSpeed",
+                "Windsnelheid": "windSpeed",
+                "Windrichting": "windDirection"
+            }
+
+            attribute_key = attribute_mapping.get(description)
+            if attribute_key:
+                converted_data[attribute_key] = measured_value
+
+            data_list.append(converted_data)
+
+        except Exception as e:
+            # Log the error and skip the problematic record
+            app.logger.error(f"Error processing record: {obj}. Error: {str(e)}")
+            continue  # Continue processing the next record
 
     return data_list
 
