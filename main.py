@@ -669,53 +669,56 @@ def convert_data_pwn_prediction(msg):
 
 def convert_data_pwn_hwl(data):
     data_list = []
-
     for obj in data:
-        id = obj['id']
-        analysis_date = obj['Analysedatum']
-        sample_date = obj['Monsterdatum']
-        concentration = obj['Waarde']
-        analysis_type = obj['Analyse']
-        component = obj['Component']
-        result = obj['Resultaat']
-        place = obj["Plaats"]
-        sub_location = obj['Sublocatie']
-        sampling_point = obj['Monsterpunt']
-        unit = obj['Eenheid']
+        try:
+            # Extract fields from the record
+            id = obj.get('id', 'unknown_id')
+            analysis_date = obj.get('Analysedatum', 'unknown_date')
+            sample_date = obj.get('Monsterdatum', 'unknown_date')
+            concentration = obj.get('Waarde', None)
+            analysis_type = obj.get('Analyse', 'unknown_analysis')
+            component = obj.get('Component', 'unknown_component')
+            result = obj.get('Resultaat', 'unknown_result')
+            place = obj.get("Plaats", 'unknown_place')
+            sub_location = obj.get('Sublocatie', 'unknown_sublocatie')
+            sampling_point = obj.get('Monsterpunt', 'unknown_monsterpunt')
+            unit = obj.get('Eenheid', 'unknown_unit')
 
-        formatted_sample_date = sample_date + ".000+00:00Z"
-        formatted_analysis_date = analysis_date + ".000+00:00Z"
-        coordinates = [5.264806, 52.750194]
+            # Format dates safely
+            formatted_sample_date = f"{sample_date}.000+00:00Z"
+            formatted_analysis_date = f"{analysis_date}.000+00:00Z"
 
-        # Create measurand entry
-        # measurand_entry = f"{component}, {concentration}, {unit}, {analysis_type} concentration analysis"
+            # Skip records with missing critical fields
+            if not all([id, analysis_date, sample_date, concentration, component, result, place, sub_location, sampling_point, unit]):
+                app.logger.warning(f"Skipping record due to missing critical fields: {obj}")
+                continue
 
-        # Convert data to NGSI-LD format
-        converted_data = {
-            "id": f"urn:ngsi-ld:WaterQualityObserved: NL-HWL: {place}-{sub_location}-{sampling_point}", #place may change?
-            "type": "WaterQualityObserved",
-            "dateObserved": formatted_sample_date,
-            "location": {
-                "type": "Point",
-                "coordinates": coordinates
-            },
-            "dataProvider": "PWN",
-            "description": f"Result: {result} (ID: {id}, Analyzed on {formatted_analysis_date}. Units: {unit}).",
-            "componentAnalyzed ": component, #Need to be added in the SDM, attribute name may change
-            "componentName ": analysis_type, #Need to be added in the SDM, attribute name may change
-            "concentration": concentration,  #Need to be added in the SDM, attribute name may change            
-            "@context": [
-                "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
-            ]
-        }
+            # Convert data to NGSI-LD format
+            converted_data = {
+                "id": f"urn:ngsi-ld:WaterQualityObserved: NL-HWL: {place}-{sub_location}-{sampling_point}",
+                "type": "WaterQualityObserved",
+                "dateObserved": formatted_sample_date,
+                "location": {
+                    "type": "Point",
+                    "coordinates": [5.264806, 52.750194]
+                },
+                "dataProvider": "PWN",
+                "description": f"Result: {result} (ID: {id}, Analyzed on {formatted_analysis_date}. Units: {unit}).",
+                "componentAnalyzed ": component,
+                "componentName ": analysis_type,
+                "concentration": concentration,
+                "@context": [
+                    "https://raw.githubusercontent.com/smart-data-models/dataModel.WaterQuality/master/context.jsonld"
+                ]
+            }
+            data_list.append(converted_data)
 
-        data_list.append(converted_data)
-
-    if 'invalid' in data:
-        raise ValueError('Invalid data')
+        except Exception as e:
+            # Log the error and skip the problematic record
+            app.logger.error(f"Error processing record: {obj}. Error: {str(e)}")
+            continue  # Continue processing the next record
 
     return data_list
-
 
 # NL - IOT sensor ferryboat data ###################################################################################################
 
