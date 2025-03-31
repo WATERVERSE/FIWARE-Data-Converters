@@ -854,7 +854,7 @@ def convert_data_riwa_rijn(data):
                 "id": f"urn:ngsi-ld:WaterQualityObserved:NL-PWN-RIWA-Rijn-{location_code}-{location_name}",
                 "type": "WaterQualityObserved",
                 "dateObserved": formatted_date,
-                "dataProvider": "PWN",
+                "dataProvider": "RIWA Rijn",
                 "componentName": NL_name,  # Need to be added in the SDM, attribute name may change
                 "measurand": [ENG_name],  # Need to be added in the SDM, attribute name may change
                 "concentration": value,  # Need to be added in the SDM, attribute name may change
