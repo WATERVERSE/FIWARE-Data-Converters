@@ -16,15 +16,18 @@ def endpoint():
     try:
         wdme_msg = request.get_json()
 
-        if 'datasource' in wdme_msg or 'entityId' in wdme_msg or 'resourceid' in wdme_msg:
+        if 'datasource' in wdme_msg or 'entityId' in wdme_msg or 'resourceid' in wdme_msg or 'id' in wdme_msg:
 
             if 'datasource' in wdme_msg: 
                 datasource = wdme_msg['datasource']
             elif 'entityId' in wdme_msg:
                 datasource = wdme_msg['entityId']
             elif 'resourceid' in wdme_msg:
-                datasource = wdme_msg['resourceid'] 
+                datasource = wdme_msg['resourceid']
+            elif 'id' in wdme_msg:
+                datasource  = wdme_msg['id'] 
 
+            print("datasource: ", datasource)
             if datasource == "KNMI":
                 converted_data = convert_data_pwn_knmi(wdme_msg["data"])
                 response = {
@@ -72,7 +75,7 @@ def endpoint():
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-            elif datasource == "iot_ferryboat_sensor": # IoT ferryboat sensor resource id
+            elif datasource == "ferryboatdata": # IoT ferryboat sensor resource id
                 converted_data = convert_data_iot_sensor(wdme_msg["data"])
                 response = {
                     'message': 'Data from IoT ferryboat sensor received and converted successfully',
