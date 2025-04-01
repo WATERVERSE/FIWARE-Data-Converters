@@ -750,13 +750,15 @@ def convert_data_iot_sensor(data_list):
             cond_value = data.get("conductivity", "unknown_conductivity")
             course = data.get("course", "unknown_course")
             speed = data.get("speed", "unknown_speed")
+            datetime_str = data.get("datetime", "unknown_datetime")  # New field
 
             # Check for missing critical fields and log details
             required_fields = {
                 'position': data.get("position"),
                 'conductivity': cond_value,
                 'course': course,
-                'speed': speed
+                'speed': speed,
+                'datetime': datetime_str  # Add datetime to required fields
             }
 
             missing_fields = [field for field, value in required_fields.items() if not value or "unknown" in str(value)]
@@ -771,11 +773,20 @@ def convert_data_iot_sensor(data_list):
                 app.logger.error(f"Invalid coordinates: {coordinates}. Full record: {data}")
                 continue  # Skip this record if coordinates are invalid
 
+            # Harmonize the datetime field
+            try:
+                # Parse the datetime string and reformat it
+                datetime_obj = datetime.fromisoformat(datetime_str)
+                formatted_datetime = datetime_obj.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+            except ValueError:
+                app.logger.error(f"Invalid datetime format: {datetime_str}. Full record: {data}")
+                continue  # Skip this record if datetime is invalid
+
             # Convert data to NGSI-LD format
             converted_data = {
                 "id": f"urn:ngsi-ld:WaterQualityObserved:NL-PWN-ferryboat-sensor-{course}-{speed}",
                 "type": "WaterQualityObserved",
-                "dateCreated": None,  # Date created not provided yet
+                "dateCreated": formatted_datetime,  
                 "location": {
                     "type": "Point",
                     "coordinates": coordinates
@@ -796,6 +807,7 @@ def convert_data_iot_sensor(data_list):
             continue  # Continue processing the next record
 
     return converted_data_list  # Return list of converted documents
+
 
 # NL - RIWA-Rijn data ###################################################################################################
 
@@ -856,7 +868,7 @@ def convert_data_riwa_rijn(data):
                 "dateObserved": formatted_date,
                 "dataProvider": "RIWA Rijn",
                 "componentName": NL_name,  # Need to be added in the SDM, attribute name may change
-                "measurand": [ENG_name],  # Need to be added in the SDM, attribute name may change
+                "measurand": [ENG_name],  
                 "concentration": value,  # Need to be added in the SDM, attribute name may change
                 "description": description,
                 "@context": [
