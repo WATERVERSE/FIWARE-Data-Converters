@@ -27,7 +27,7 @@ def endpoint():
             elif 'id' in wdme_msg:
                 datasource  = wdme_msg['id'] 
 
-            print("datasource: ", datasource)
+            
             if datasource == "KNMI":
                 converted_data = convert_data_pwn_knmi(wdme_msg["data"])
                 response = {
