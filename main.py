@@ -270,7 +270,27 @@ def endpoint():
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-            
+            elif datasource == "20342901-6043-4a9c-90cb-123456b8b3de" or datasource == "20138902-6043-4a9c-90cb-123456b8b3de":
+                converted_data = convert_data_key_t3_t11(wdme_msg["data"])
+                response = {
+                    'message': 'Data from Keyaqua T3-T11 received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
+            elif datasource == "20346904-6043-4a9c-90cb-123456b8b3de":
+                converted_data = convert_data_key_usecase_3(wdme_msg["data"])
+                response = {
+                    'message': 'Data from Keyaqua use case 3 received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
+            elif datasource == "20346905-6043-4a9c-90cb-123456b8b3de":
+                converted_data = convert_data_key_cgi(wdme_msg["data"])
+                response = {
+                    'message': 'Data from Keyaqua cgi received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
             elif datasource == "SP-SNOWFLAKE-SQL-1":
                 converted_data = convert_data_hidr_snowflake_sql_1(wdme_msg["data"])
                 response = {
@@ -1343,6 +1363,71 @@ def convert_data_sww_digital(data):
 
     return data_list
 
+# UK - SWW - rainfall data ##################################################################################################
+
+def convert_data_sww_rainfall(data):
+    data_list = []
+
+    for obj in data['values']:
+        date = obj("index")
+        edm = obj["edm"] #what is it? what is the unit?
+        rain = obj["rain"]
+        description = obj["outcomeTypeFilled"] #what is it?
+
+        #convert data to ngsi-ld
+        converted_data = {
+            "id": "urn:ngsi-ld:DeviceMeasurement:UK-SWW-rainfall",
+            "type": "DeviceMeasurement",
+            "deviceType": "sensor",
+            "controlledProperty": "rainfall",
+            "unit": "millimeter", #???
+            "numValue": edm,
+            "textValue": rain,
+            "dateObserved": date,
+            "description": description,
+            #location??
+            "@context": [
+    "https://raw.githubusercontent.com/smart-data-models/dataModel.Device/master/context.jsonld"
+  ]
+        }
+                           
+
+        data_list.append(converted_data)
+
+        
+
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+
+    return data_list
+
+# UK - SWW - Tavistock River level ##################################################################################################
+
+def convert_data_sww_tavistock(data):
+
+    data_list = []
+
+    for obj in data['values']:
+        date = obj("dateTime")
+        level = obj["level"]
+
+        #convert data to ngsi-ld
+        converted_data = {
+            "id": "urn:ngsi-ld:DeviceMeasurement:UK-SWW-Tavistock-level",
+            "type": "DeviceMeasurement",
+            "deviceType": "sensor",
+            "measurementType": "level",
+            "unit": "meter",
+            "numValue": level,
+            "dateObserved": date,
+            #location??
+            "@context": [
+    "https://raw.githubusercontent.com/smart-data-models/dataModel.Device/master/context.jsonld"
+  ]
+        }
+                           
+
+        data_list.append(converted_data)
 
 # DE - HST - rainfall ######################################################################################################
 
@@ -1743,6 +1828,51 @@ def convert_data_wbl_smart_metering(data):
         raise ValueError('Invalid data')
 
     return data_list
+
+
+# CY - WBL - telemetry 2 #####################################################################################################
+def convert_data_wbl_telemetry_new(data):
+
+    data_list = []
+
+    for obj in data:
+        timestamp = obj["time"]
+        flow = obj["value"]
+        sensorid = obj["sensorid"]
+        sensortype = obj["sensortype"]
+        flow = float(flow)
+
+        lat = 34.68071062318811
+        long = 32.986225581023504
+        coordinates = [long, lat]
+
+        #convert data to ngsi-ld
+        converted_data = {
+            "id": "urn:ngsi-ld:WaterObserved:CY-WBL-telemetryData-version2",
+            "type": "WaterObserved",
+            "description": "Sensor: " + sensorid + ". Type: " + sensortype + ". Daily telemetry data from WBL. Flow: m^3/h",
+            "dataProvider": "WBL",
+            "location": {
+                "type": "Point",
+                "coordinates": coordinates
+                },
+            "flow": flow,
+            "dateObserved": timestamp,
+            "@context": [
+    "https://raw.githubusercontent.com/smart-data-models/dataModel.Environment/master/context.jsonld"
+  ]
+        }
+                           
+
+        data_list.append(converted_data)
+
+        
+
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+
+    return data_list
+
 
 # FI - KEY - water duct #####################################################################################################
 
@@ -2406,6 +2536,164 @@ def convert_data_key_sewer_manhole(data):
 
     return data_list
 
+# FI - KEY - T3-T11 #####################################################################################################
+
+def convert_data_key_t3_t11(data):
+
+    data_list = []
+    transformer = Transformer.from_crs("EPSG:3067", "EPSG:4326", always_xy=True)
+
+    for obj in data:
+    
+        surfaceCode = obj["surface_code"]
+        lineNumber = obj["line_number"]
+        surveyCode = obj["survey_code"]
+        pointNumber = obj["point_number"]
+        northCoordinate = obj["nort_coord"]
+        eastCoordinate = obj["east_coord"]
+        z = obj["z"]
+        depth = obj.get("depth")
+        locationAccuracy = obj.get("location_accuracy")
+        heightAccuracy = obj.get("height_accuracy")
+        material = obj.get("material")
+        diameter = obj.get("diameter")
+        comment = obj.get("comment")
+
+        east = float(eastCoordinate)
+        north = float(northCoordinate)
+        #print("East:", east, "North:", north)
+        lon, lat = transformer.transform(east, north)
+        #print("Transformed coordinates:", lon, lat)
+        coordinates_final = [lon, lat]
+
+
+
+        #convert data to ngsi-ld
+        converted_data = {
+            "id": "urn:ngsi-ld:sewerManhole:FI-KEY-sewerManhole-T3-T11-SurfaceCode: "+surfaceCode,
+            "type": "sewerManhole",
+            "dataProvider": "Keyaqua",
+            "lineNumber": lineNumber,
+            "surveyCode": surveyCode,
+            "pointNumber": pointNumber,
+            "z": z,
+            "depth": depth,
+            "locationAccuracy": locationAccuracy,
+            "heightAccuracy": heightAccuracy,
+            "material": material,
+            "diameter": diameter,
+            "comment": comment,
+            "location": {
+                "type": "Point",
+                "coordinates": coordinates_final
+                },
+            "@context": None
+        }
+                           
+
+        data_list.append(converted_data)
+
+        
+
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+
+    return data_list
+
+# FI - KEY - CGI #####################################################################################################
+
+def convert_data_key_cgi(data):
+
+    data_list = []
+
+    for obj in data:
+    
+        customer = obj["customer(k)"]
+        name = obj["name"]
+        address = obj["address"]
+        postCode = obj["posti"]
+        city = obj["city"]
+        phone = obj["phone"]
+        meter = obj["meter"]
+        payer = obj["payer"]
+        recipient = obj["reciepient"]
+
+        #convert data to ngsi-ld
+        converted_data = {
+            "id": "urn:ngsi-ld:sewerManhole:FI-KEY-CGI",
+            "type": "customerDetails",
+            "dataProvider": "Keyaqua",
+            "customer": customer,
+            "name": name,
+            "address": address,
+            "postCode": postCode,
+            "city": city,
+            "phone": phone,
+            "meter": meter,
+            "payer": payer,
+            "recipient": recipient,
+            "@context": None
+        }
+                           
+
+        data_list.append(converted_data)
+
+        
+
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+
+    return data_list
+
+# FI - KEY - Usecase 3 #####################################################################################################
+
+def convert_data_key_usecase_3(data):
+    data_list = []
+
+    for obj in data:
+    
+        name = obj["name"]
+        st_astext = obj["st_astext"]
+        originalId = obj["origina_id"]
+        time = obj["time"]
+        condition = obj["condition"]
+        comment1 = obj["comment1"]
+        comment2 = obj["comment2"]
+        comment3 = obj["comment3"]
+        comment4 = obj["comment4"]
+        followUp = obj["followUp"]
+        followUpDate = obj["followUpDate"]
+        fileName = obj["fileName"]
+
+        #convert data to ngsi-ld
+        converted_data = {
+            "id": "urn:ngsi-ld:sewerManhole:FI-KEY-U3",
+            "type": "customerDetails",
+            "dataProvider": "Keyaqua",
+            "name": name,
+            "st_astext": st_astext,
+            "originalId": originalId,
+            "time": time,
+            "condition": condition,
+            "comment1": comment1,
+            "comment2": comment2,
+            "comment3": comment3,
+            "comment4": comment4,
+            "followUp": followUp,
+            "followUpDate": followUpDate,            
+            "fileName": fileName,
+            "@context": None
+        }
+                           
+
+        data_list.append(converted_data)
+
+        
+
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+
+    return data_list
 
 # SP - HIDR - snowflake SQL-1 #####################################################################################################
 
@@ -2864,9 +3152,46 @@ def convert_data_hidr_water_sources_M(data):
 
     return data_list
 
-############################################################################################################################
-############################################################################################################################
+# SP - HIDR - supplied water #####################################################################################################
 
+def convert_data_hidr_supplied_water(data):
+    data_list = []
+
+    for obj in data:
+        suppliedOwnWater = obj["SuppliedW_o"] #m3
+        suppliedExternalWater = obj["SuppliedW_e"] #m3
+        registeredWater = obj["RegisteredW"] #m3
+        volStoredWater = obj["Volume_reservoir"] #hm3
+        precipitationReservoir = obj["Precipitation_reservoir"] #mm
+        piezometricLevels = obj["PiezometricL"] #m
+        SPI = obj["SPI"] #standard index
+
+     #convert data to ngsi-ld
+        converted_data = {
+            "id": "urn:ngsi-ld:Leaks:SP-HIDR-suppliedWater-",
+            "type": "SuppliedWater",
+            "dataProvider": "Hidralia",
+            "suppliedOwnWater": string_to_float(suppliedOwnWater),
+            "suppliedExternalWater": string_to_float(suppliedExternalWater),
+            "registeredWater": string_to_float(registeredWater),
+            "volStoredWater": string_to_float(volStoredWater),
+            "precipitationReservoir": string_to_float(precipitationReservoir),
+            "piezometricLevels": string_to_float(piezometricLevels),
+            "SPI": SPI,
+            "@context": [
+                None
+            ]
+        }                           
+
+        data_list.append(converted_data)
+
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+
+    return data_list
+
+############################################################################################################################
+############################################################################################################################
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)  #remove debugger in final version!!!
