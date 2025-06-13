@@ -270,21 +270,21 @@ def endpoint():
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-            elif datasource == "2065410-6043-4a9c-90cb-123456b8b3de" or datasource == "20138902-6043-4a9c-90cb-123456b8b3de":
+            elif datasource == "123dfew1-6043-4a9c-90cb-123456b8b3de" or datasource == "123dfew2-6043-4a9c-90cb-123456b8b3de" or datasource == "123dfew3-6043-4a9c-90cb-123456b8b3de":
                 converted_data = convert_data_key_t3_t11(wdme_msg["data"])
                 response = {
                     'message': 'Data from Keyaqua T3-T11 received and converted successfully',
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-            elif datasource == "20347104-6043-4a9c-90cb-123456b8b3de":
+            elif datasource == "123dfew3-6043-4a9c-90cb-123456b8b3de":
                 converted_data = convert_data_key_usecase_3(wdme_msg["data"])
                 response = {
                     'message': 'Data from Keyaqua use case 3 received and converted successfully',
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-            elif datasource == "20346905-6043-4a9c-90cb-123456b8b3de":
+            elif datasource == "123dfew2-6043-4a9c-90cb-123456b8b3de":
                 converted_data = convert_data_key_cgi(wdme_msg["data"])
                 response = {
                     'message': 'Data from Keyaqua cgi received and converted successfully',
@@ -2629,8 +2629,8 @@ def convert_data_key_cgi(data):
             "postCode": postCode,
             "city": city,
             "phone": phone,
-            "meter": meter,
-            "payer": payer,
+            "consumption": meter,
+            "date": payer,
             "recipient": recipient,
             "@context": None
         }
