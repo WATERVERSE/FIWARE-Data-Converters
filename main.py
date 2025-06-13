@@ -270,7 +270,7 @@ def endpoint():
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-            elif datasource == "123dfew1-6043-4a9c-90cb-123456b8b3de" or datasource == "123dfew2-6043-4a9c-90cb-123456b8b3de" or datasource == "123dfew3-6043-4a9c-90cb-123456b8b3de":
+            elif datasource == "20662101-6043-4a9c-90cb-123456b8b3de" or datasource == "20658101-6043-4a9c-90cb-123456b8b3de" or datasource == "20654101-6043-4a9c-90cb-123456b8b3de":
                 converted_data = convert_data_key_t3_t11(wdme_msg["data"])
                 response = {
                     'message': 'Data from Keyaqua T3-T11 received and converted successfully',
