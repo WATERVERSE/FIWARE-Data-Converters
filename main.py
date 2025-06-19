@@ -192,7 +192,7 @@ def endpoint():
                 return jsonify(response)
             
             elif datasource == "WBL-DATASOURCE-TELEMETRY":
-                converted_data = convert_data_wbl_telemetry(wdme_msg["data"])
+                converted_data = convert_data_wbl_telemetry_new(wdme_msg["response"])
                 response = {
                     'message': 'Data from WBL Telemetry received and converted successfully',
                     'converted_data': converted_data
@@ -200,7 +200,7 @@ def endpoint():
                 return jsonify(response)
             
             elif datasource == "WBL-DATASOURCE-SMARTMETERING":
-                converted_data = convert_data_wbl_smart_metering(wdme_msg["data"])
+                converted_data = convert_data_wbl_smart_metering_new(wdme_msg["response"])
                 response = {
                     'message': 'Data from WBL Smart Metering received and converted successfully',
                     'converted_data': converted_data
@@ -1661,9 +1661,9 @@ def convert_data_wbl_call_complains(data):
         serial = obj["serial"]
         topic = obj["topic"]
         reason = obj["reason"]
-        date_taken_number = obj["date_taken_number"]
+        date_taken_number = obj["date_reported"]
         time_taken = obj["time_taken"]
-        date_completed = obj["date_completed"]
+        #date_completed = obj["date_completed"]
         time_to = obj["time_to"]
         taken_by = obj["taken_by"]
         comments = obj["comments"]
@@ -1680,19 +1680,24 @@ def convert_data_wbl_call_complains(data):
         lon_str = obj["lon"]
         lat_str = obj["lat"]
 
+        given_to = obj["given_to"]
+        time_from = obj["time_from"]
+        wkb_geometry = obj["wkb_geometry"]
+
         if time_taken and date_taken_number:
             time_object = datetime.strptime(time_taken, "%H:%M")
-            date_object = datetime.strptime(date_taken_number, "%Y%m%d")
+            #date_object = datetime.strptime(date_taken_number, "%Y%m%d")
+            date_object = datetime.strptime(date_taken_number, "%d/%m/%Y")
             combined_datetime1 = datetime.combine(date_object.date(), time_object.time())
             date_taken = combined_datetime1.strftime('%Y-%m-%dT%H:%M:%S.000+00:00Z')
         else: date_taken = ""
-
-        if date_completed and time_to:
-            date_completed = datetime.strptime(date_completed, "%d/%m/%Y")
-            time_to = datetime.strptime(time_to, "%H:%M")
-            combined_datetime2 = datetime.combine(date_completed.date(), time_to.time())
-            date_completed_formated = combined_datetime2.strftime('%Y-%m-%dT%H:%M:%S.000+00:00Z')
-        else: date_completed_formated = ""
+        
+        #if date_completed and time_to:
+         #   date_completed = datetime.strptime(date_completed, "%d/%m/%Y")
+          #  time_to = datetime.strptime(time_to, "%H:%M")
+           # combined_datetime2 = datetime.combine(date_completed.date(), time_to.time())
+            #date_completed_formated = combined_datetime2.strftime('%Y-%m-%dT%H:%M:%S.000+00:00Z')
+        #else: date_completed_formated = ""
 
         if lat_str and lon_str:
             lat = float(lat_str)
@@ -1709,7 +1714,7 @@ def convert_data_wbl_call_complains(data):
             "alternateName": reason,
             "description": comments,
             "timestamp": date_taken,
-            "dateModified": date_completed_formated,
+            #"dateModified": date_completed_formated,
             "location": {
                 "type": "Point",
                 "coordinates": coordinates
@@ -1873,6 +1878,47 @@ def convert_data_wbl_telemetry_new(data):
 
     return data_list
 
+# CY - WBL - smart metering #####################################################################################################
+
+def convert_data_wbl_smart_metering_new(data):
+
+    data_list = []
+
+    for obj in data:
+        rowid = obj["Rowid"]
+        timestamp_str = obj["Timestamp"]
+        device = obj["Device"]
+        value = obj["Value"]
+        value = float(value)
+
+        timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S")
+        formatted_date = timestamp.strftime('%Y-%m-%dT%H:%M:%S.000+00:00Z')
+
+        #convert data to ngsi-ld
+        converted_data = {
+            "id": "urn:ngsi-ld:DeviceMeasurement:CY-WBL-smartMeteringData",
+            "type": "DeviceMeasurement",
+            "description": "Volume of water measurement",
+            "dataProvider": "WBL",
+            "refDevice": device,
+            "numValue": value,
+            "unit": "m^3",
+            "dateObserved": formatted_date,
+            "description": "Rowid: " + str(rowid),
+            "@context": [
+    "https://raw.githubusercontent.com/smart-data-models/dataModel.Device/master/context.jsonld"
+  ]
+        }
+                           
+
+        data_list.append(converted_data)
+
+        
+
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+
+    return data_list
 
 # FI - KEY - water duct #####################################################################################################
 
