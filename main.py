@@ -192,7 +192,7 @@ def endpoint():
                 return jsonify(response)
             
             elif datasource == "WBL-DATASOURCE-TELEMETRY":
-                converted_data = convert_data_wbl_telemetry_new(wdme_msg["response"])
+                converted_data = convert_data_wbl_telemetry_new(wdme_msg["data"])
                 response = {
                     'message': 'Data from WBL Telemetry received and converted successfully',
                     'converted_data': converted_data
@@ -200,7 +200,7 @@ def endpoint():
                 return jsonify(response)
             
             elif datasource == "WBL-DATASOURCE-SMARTMETERING":
-                converted_data = convert_data_wbl_smart_metering_new(wdme_msg["response"])
+                converted_data = convert_data_wbl_smart_metering_new(wdme_msg["data"])
                 response = {
                     'message': 'Data from WBL Smart Metering received and converted successfully',
                     'converted_data': converted_data
