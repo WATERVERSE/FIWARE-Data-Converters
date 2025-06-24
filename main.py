@@ -200,13 +200,26 @@ def endpoint():
                 return jsonify(response)
             
             elif datasource == "WBL-DATASOURCE-SMARTMETERING":
+                converted_data = convert_data_wbl_smart_metering(wdme_msg["data"])
+                response = {
+                    'message': 'Data from WBL Smart Metering received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
+            elif datasource == "83709322-6043-4a9c-90cb-consusb8b3de":
                 converted_data = convert_data_wbl_smart_metering_new(wdme_msg["data"])
                 response = {
                     'message': 'Data from WBL Smart Metering received and converted successfully',
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-            
+            elif datasource == "OCEANOS-TIMESERIES":
+                converted_data = convert_data_wbl_telemetry_new(wdme_msg["data"])
+                response = {
+                    'message': 'Data from Oceanos Timeseries received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
             elif datasource == "FY-WATER-DUCT":
                 converted_data = convert_data_key_water_duct(wdme_msg["data"])
                 response = {
@@ -1885,26 +1898,47 @@ def convert_data_wbl_smart_metering_new(data):
     data_list = []
 
     for obj in data:
-        rowid = obj["Rowid"]
-        timestamp_str = obj["Timestamp"]
+        rowid = str(obj["Rowid"])
+        timestamp_str = obj["Time"]
         device = obj["Device"]
         value = obj["Value"]
         value = float(value)
+        connection = obj["Connection"]
+        meternumber = obj["Meternumber"]
+        serialnumber = obj["Serialnumber"]
+        profile = obj["Profile"]
+        device_type = obj["Tipo"]
+        address = obj["Morada"]
+        zmcid = str(obj["Zmcid"])
+        flag = obj["Flag"]
+        lat = obj["Lat"]
+        lon = obj["Lon"]
 
         timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S")
         formatted_date = timestamp.strftime('%Y-%m-%dT%H:%M:%S.000+00:00Z')
 
+        coordinates = [lon, lat]
         #convert data to ngsi-ld
         converted_data = {
-            "id": "urn:ngsi-ld:DeviceMeasurement:CY-WBL-smartMeteringData",
+            "id": "urn:ngsi-ld:DeviceMeasurement:CY-WBL-smartMeteringData-Zmcid: "+zmcid+"-Meternumber: "+meternumber,
             "type": "DeviceMeasurement",
             "description": "Volume of water measurement",
             "dataProvider": "WBL",
-            "refDevice": device,
+            "refDevice": "urn:ngsi-ld:MEASUREMENT:refDevice:"+device,
             "numValue": value,
+            "measurementType": flag,
+            "deviceType": device_type,
+            "address": {
+                "streetAddress": address,
+            },
+            "alternateName": serialnumber,
+            "location": {
+                "type": "Point",
+                "coordinates": coordinates  
+                },
             "unit": "m^3",
             "dateObserved": formatted_date,
-            "description": "Rowid: " + str(rowid),
+            "description": "Rowid: " + str(rowid)+" Connection: "+ connection + " Profile: " + profile,
             "@context": [
     "https://raw.githubusercontent.com/smart-data-models/dataModel.Device/master/context.jsonld"
   ]
