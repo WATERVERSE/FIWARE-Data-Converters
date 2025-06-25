@@ -1911,8 +1911,9 @@ def convert_data_wbl_smart_metering_new(data):
         address = obj["Morada"]
         zmcid = str(obj["Zmcid"])
         flag = obj["Flag"]
-        lat = obj["Lat"]
-        lon = obj["Lon"]
+        lat = float(obj["Lat"].replace(",", "."))
+        lon = float(obj["Lon"].replace(",", "."))
+
 
         timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S")
         formatted_date = timestamp.strftime('%Y-%m-%dT%H:%M:%S.000+00:00Z')
