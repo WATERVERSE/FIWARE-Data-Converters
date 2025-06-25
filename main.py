@@ -206,7 +206,7 @@ def endpoint():
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-            elif datasource == "83709322-6043-4a9c-90cb-consusb8b3de":
+            elif datasource == "83709323-6043-4a9c-90cb-readisb8b3de":
                 converted_data = convert_data_wbl_smart_metering_new(wdme_msg["data"])
                 response = {
                     'message': 'Data from WBL Smart Metering received and converted successfully',
