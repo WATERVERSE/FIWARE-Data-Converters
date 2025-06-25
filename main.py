@@ -1911,13 +1911,18 @@ def convert_data_wbl_smart_metering_new(data):
         address = obj["Morada"]
         zmcid = str(obj["Zmcid"])
         flag = obj["Flag"]
-        lat = obj["Lat"]
-        lon = obj["Lon"]
+        lat_str = obj["Lat"].replace(",", ".")
+        lon_str = obj["Lon"].replace(",", ".")      
+
+        if lat_str and lon_str:
+            lat = float(lat_str)
+            lon = float(lon_str)
+            coordinates = [lon, lat]
+        else: coordinates = [None, None]
 
         timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S")
         formatted_date = timestamp.strftime('%Y-%m-%dT%H:%M:%S.000+00:00Z')
 
-        coordinates = [lon, lat]
         #convert data to ngsi-ld
         converted_data = {
             "id": "urn:ngsi-ld:DeviceMeasurement:CY-WBL-smartMeteringData-Zmcid: "+zmcid+"-Meternumber: "+meternumber,
