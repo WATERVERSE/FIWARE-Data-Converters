@@ -344,7 +344,7 @@ def endpoint():
                 }
                 return jsonify(response)
             
-            elif datasource == "SP-AGBAR-WATER-SOURCES-D":
+            elif datasource == "SP-AGBAR-WATER-SOURCES-D" or datasource == "49dfc33d-ee67-4e79-97bc-7af4cf5b7489" or datasource == "fde16dd6-5f8d-4b3e-a2a6-0d4ccbd5617e" or datasource == "3b567c06-9e5b-43fb-8770-ddafeaa20b53" or datasource == "78aebaca-46ea-4819-a165-b24417b1d954":
                 converted_data = convert_data_hidr_water_sources_D(wdme_msg["data"])
                 response = {
                     'message': 'Data from Hidralia water sources D received and converted successfully',
@@ -359,7 +359,20 @@ def endpoint():
                     'converted_data': converted_data
                 }
                 return jsonify(response)
-
+            elif datasource in ["ccd6c523-0b76-4a47-997e-a2b122d2a78b", "00f2a8a5-7701-47ac-864a-260ea7d8a3a5", "086a4bec-3400-457e-98bc-6dc526013fee", "12770e7c-46cd-4c12-9126-385815895008", "dbb0ecf7-66be-4655-ad5f-d05925fc801c", "e05daff4-20d3-45a4-ae5f-6487630fd558", "7a468bed-8753-488f-af85-687b3e5b4587", "ca0145df-5857-45f8-9aed-46403281b507"]:
+                converted_data = convert_data_cetaqua_reservoirs(wdme_msg["data"], datasource)
+                response = {
+                    'message': 'Data from Cetaqua reservoirs received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
+            elif datasource in ["50d307d3-7a6f-413b-8688-4542c5b70e8c", "df895e05-2ec6-430c-8acf-87a36a59ba7a", "d1db8812-2c2b-4a81-a047-6e0cad085749", "9e2a037f-9af8-448c-8fcf-9850c25d3deb", "a0a94415-a54a-4254-8cc2-1a049c962c3a", "30aba528-f06f-4e33-af88-530720ca5374", "2a84aebd-861e-48d1-883d-d5b3c9581387", "a7137966-be77-4c20-b34a-b576833ecbf4", "472f4ae2-718c-4f1b-9c82-9bca134c446c", "53c16eb6-5a9f-4a3b-b90c-895375c28bfd", "b2ed0873-187b-4612-a80a-74497ad573d1", "25a4e331-007f-4470-84de-f936341652d6", "ba0c6fe7-9a04-4d5f-b5f6-132919bc5638"]:
+                converted_data = convert_data_cetaqua_wells(wdme_msg["data"], datasource)
+                response = {
+                    'message': 'Data from Cetaqua wells received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
             else:
                 return jsonify({"error": "Invalid data format or missing keys."}), 400
             
@@ -3275,6 +3288,115 @@ def convert_data_hidr_supplied_water(data):
 
     return data_list
 
+
+# SP - Cetaqua - Reservoirs #####################################################################################################
+
+def convert_data_cetaqua_reservoirs(data, datasource):
+    data_list = []
+    resource_id = datasource
+    print("Resource ID:", resource_id)
+    # Mapping of resource IDs to coordinates
+    reservoir_locations = {
+        "ccd6c523-0b76-4a47-997e-a2b122d2a78b": {"name": "Casasola", "lat": 36.23666086, "lon": -5.540823961},
+        "00f2a8a5-7701-47ac-864a-260ea7d8a3a5": {"name": "Charco Redondo", "lat": 36.23666086, "lon": -5.540823961},
+        "086a4bec-3400-457e-98bc-6dc526013fee": {"name": "Conde de Guadalhorce", "lat": 36.92074138, "lon": -4.812557502},
+        "12770e7c-46cd-4c12-9126-385815895008": {"name": "Guadalhorce", "lat": 36.96696882, "lon": -4.772592478},
+        "dbb0ecf7-66be-4655-ad5f-d05925fc801c": {"name": "Guadalteba", "lat": 36.95179548, "lon": -4.834887829},
+        "e05daff4-20d3-45a4-ae5f-6487630fd558": {"name": "Guadarranque", "lat": 36.31923114, "lon": -5.468419076},
+        "7a468bed-8753-488f-af85-687b3e5b4587": {"name": "La Concepción", "lat": 36.53642948, "lon": -4.958892947},
+        "ca0145df-5857-45f8-9aed-46403281b507": {"name": "La Viñuela", "lat": 36.87877153, "lon": -4.172028067}
+    }
+
+    for obj in data:
+        # Extract resource ID from input data
+        #resource_id = obj.get("resource_id")
+        if resource_id not in reservoir_locations:
+            raise ValueError(f"Invalid resource ID: {resource_id}")
+
+        reservoir_name = reservoir_locations[resource_id]["name"]
+        volume = obj["volumen"]  # hm3
+        precipitation = obj["precipitation"]  # mm
+        timestamp = obj["fecha"]  # YYYY-MM-DD HH:MM:SS
+
+        # Convert data to NGSI-LD format
+        converted_data = {
+            "id": f"urn:ngsi-ld:DeviceMeasurement:SP-reservoirs-{reservoir_name}",
+            "type": "DeviceMeasurement",
+            "dateObserved": timestamp,
+            "name": "Volume",
+            "numValue": volume,
+            "description": f"Precipitation: {precipitation} , Reservoir data for {reservoir_name}",
+            "location": {
+                "type": "Point",
+                "coordinates": [reservoir_locations[resource_id]["lon"], reservoir_locations[resource_id]["lat"]]
+            },
+            "@context": [
+                "https://raw.githubusercontent.com/smart-data-models/dataModel.Device/master/context.jsonld"
+            ]
+        }
+
+        print("Converted Data:", converted_data)
+
+        data_list.append(converted_data)
+
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+
+    return data_list
+# SP - Cetaqua - Wells #####################################################################################################
+
+def convert_data_cetaqua_wells(data, datasource):
+    data_list = []
+    resource_id = datasource
+    # Mapping of resource IDs to well names and coordinates
+    well_locations = {
+        "50d307d3-7a6f-413b-8688-4542c5b70e8c": {"name": "P.06.38.001-B", "lat": 36.62363619, "lon": -4.52278555},
+        "df895e05-2ec6-430c-8acf-87a36a59ba7a": {"name": "P.06.38.002-B", "lat": 36.64303896, "lon": -4.57170229},
+        "d1db8812-2c2b-4a81-a047-6e0cad085749": {"name": "P.06.38.003-B", "lat": 36.63285172, "lon": -4.68711669},
+        "9e2a037f-9af8-448c-8fcf-9850c25d3deb": {"name": "P.06.38.004-B", "lat": 36.60509558, "lon": -4.63294822},
+        "a0a94415-a54a-4254-8cc2-1a049c962c3a": {"name": "P.06.38.004-S", "lat": 36.60055995, "lon": -4.61054958},
+        "30aba528-f06f-4e33-af88-530720ca5374": {"name": "P.06.38.005-S", "lat": 36.6107308, "lon": -4.6169777},
+        "2a84aebd-861e-48d1-883d-d5b3c9581387": {"name": "P.06.38.008-S", "lat": 36.62131297, "lon": -4.70680324},
+        "a7137966-be77-4c20-b34a-b576833ecbf4": {"name": "P.06.38.011-S", "lat": 36.64031274, "lon": -4.6770786},
+        "472f4ae2-718c-4f1b-9c82-9bca134c446c": {"name": "P.06.38.013-S", "lat": 36.64354189, "lon": -4.62665544},
+        "53c16eb6-5a9f-4a3b-b90c-895375c28bfd": {"name": "P.06.38.014-S", "lat": 36.64860214, "lon": -4.61404421},
+        "b2ed0873-187b-4612-a80a-74497ad573d1": {"name": "P.06.38.015-S", "lat": 36.6480117, "lon": -4.61080884},
+        "25a4e331-007f-4470-84de-f936341652d6": {"name": "P.06.38.022-S", "lat": 36.65512871, "lon": -4.54884597},
+        "ba0c6fe7-9a04-4d5f-b5f6-132919bc5638": {"name": "P.06.38.039-S", "lat": 36.63506336, "lon": -4.676674}
+    }
+
+    for obj in data:
+        # Extract resource ID from input data
+        #resource_id = obj.get("resource_id")
+        if resource_id not in well_locations:
+            raise ValueError(f"Invalid resource ID: {resource_id}")
+
+        well_name = well_locations[resource_id]["name"]
+        timestamp = obj["fecha"]  # YYYY-MM-DD
+        water_level = obj["y"]  # m
+
+        # Convert data to NGSI-LD format
+        converted_data = {
+            "id": f"urn:ngsi-ld:WaterObserved:SP-wells-{well_name}",
+            "type": "WaterObserved",
+            "dateObserved": timestamp,
+            "description": f"Well data for {well_name}",
+            "waterLevel": water_level,
+            "location": {
+                "type": "Point",
+                "coordinates": [well_locations[resource_id]["lon"], well_locations[resource_id]["lat"]]
+            },
+            "@context": [
+                "https://raw.githubusercontent.com/smart-data-models/dataModel.Environment/master/context.jsonld"
+            ]
+        }
+
+        data_list.append(converted_data)
+
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+
+    return data_list
 ############################################################################################################################
 ############################################################################################################################
 
