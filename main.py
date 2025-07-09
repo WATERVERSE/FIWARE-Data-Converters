@@ -3294,7 +3294,6 @@ def convert_data_hidr_supplied_water(data):
 def convert_data_cetaqua_reservoirs(data, datasource):
     data_list = []
     resource_id = datasource
-    print("Resource ID:", resource_id)
     # Mapping of resource IDs to coordinates
     reservoir_locations = {
         "ccd6c523-0b76-4a47-997e-a2b122d2a78b": {"name": "Casasola", "lat": 36.23666086, "lon": -5.540823961},
@@ -3317,12 +3316,13 @@ def convert_data_cetaqua_reservoirs(data, datasource):
         volume = obj["volumen"]  # hm3
         precipitation = obj["precipitacion"]  # mm
         timestamp = obj["fecha"]  # YYYY-MM-DD HH:MM:SS
-
+        timestamp = timestamp+"T00:00:00Z"
         # Convert data to NGSI-LD format
         converted_data = {
-            "id": f"urn:ngsi-ld:DeviceMeasurement:SP-reservoirs-{reservoir_name}",
+            "id": f"urn:ngsi-ld:DeviceMeasurement:SP-HIDR-reservoirs-{reservoir_name}",
             "type": "DeviceMeasurement",
             "dateObserved": timestamp,
+            "dataProvider": "Hidralia",
             "name": "Volume",
             "numValue": volume,
             "description": f"Precipitation: {precipitation} , Reservoir data for {reservoir_name}",
@@ -3372,14 +3372,16 @@ def convert_data_cetaqua_wells(data, datasource):
             raise ValueError(f"Invalid resource ID: {resource_id}")
 
         well_name = well_locations[resource_id]["name"]
-        timestamp = obj["fecha"]  # YYYY-MM-DD
+        timestamp = obj["Fecha"]  # YYYY-MM-DD
         water_level = obj["y"]  # m
+        timestamp = timestamp+"T00:00:00Z"
 
         # Convert data to NGSI-LD format
         converted_data = {
-            "id": f"urn:ngsi-ld:WaterObserved:SP-wells-{well_name}",
+            "id": f"urn:ngsi-ld:WaterObserved:SP-HIDR-wells-{well_name}",
             "type": "WaterObserved",
             "dateObserved": timestamp,
+            "dataProvider": "Hidralia",
             "description": f"Well data for {well_name}",
             "waterLevel": water_level,
             "location": {
