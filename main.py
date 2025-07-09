@@ -3315,7 +3315,7 @@ def convert_data_cetaqua_reservoirs(data, datasource):
 
         reservoir_name = reservoir_locations[resource_id]["name"]
         volume = obj["volumen"]  # hm3
-        precipitation = obj["precipitation"]  # mm
+        precipitation = obj["precipitacion"]  # mm
         timestamp = obj["fecha"]  # YYYY-MM-DD HH:MM:SS
 
         # Convert data to NGSI-LD format
