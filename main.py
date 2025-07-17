@@ -373,6 +373,13 @@ def endpoint():
                     'converted_data': converted_data
                 }
                 return jsonify(response)
+            elif datasource == "QUANTUMLEAP-ETTELN-DATA":
+                converted_data = convert_data_hst_quantumleap(wdme_msg["data"])
+                response = {
+                    'message': 'Data from Quantumleap etteln data received and converted successfully',
+                    'converted_data': converted_data
+                }
+                return jsonify(response)
             else:
                 return jsonify({"error": "Invalid data format or missing keys."}), 400
             
@@ -1676,6 +1683,58 @@ def convert_data_hst_floodMonitoring(data):
         raise ValueError('Invalid data')
 
     return data_list
+
+# DE - HST - quantumleap  ######################################################################################################
+
+def convert_data_hst_quantumleap(data):
+    data_list = []
+    
+    timestamps = data.get('index', [])
+    water_levels = data.get('values', [])    
+    
+    # Ensure timestamps and water_levels have the same length
+    if len(timestamps) != len(water_levels):
+        raise ValueError('Mismatched lengths between timestamps and water levels')
+    
+    lon = 51.635207106754194
+    lat = 8.769453789133822
+    # Hardcoded coordinates (as per your example, can be updated if needed)
+    coordinates = [lon, lat]
+    
+    # Iterate over timestamps and water levels together
+    for timestamp, water_level in zip(timestamps, water_levels):
+        # Ensure timestamp is in the correct format (already in ISO 8601)
+        try:
+            # Validate timestamp format
+            datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f+00:00")
+            formatted_timestamp = timestamp  # Already in desired format
+        except ValueError:
+            # Handle invalid timestamp format if needed
+            formatted_timestamp = ""
+        
+        # Create NGSI-LD compliant document
+        converted_data = {
+            "id": f"urn:ngsi-ld:WaterObserved:eui-24e124126c144958",
+            "type": "WaterObserved",
+            "dateObserved": formatted_timestamp,
+            "dataProvider": "HST",
+            "waterLevel": water_level,
+            "location": {
+                "type": "Point",
+                "coordinates": coordinates
+            },
+            "@context": [
+                "https://raw.githubusercontent.com/smart-data-models/dataModel.Environment/master/context.jsonld"
+            ]
+        }
+        
+        data_list.append(converted_data)
+
+    if 'invalid' in data:
+        raise ValueError('Invalid data')
+    
+    return data_list
+
 
 # CY - WBL - call complains ################################################################################################
 
@@ -3394,11 +3453,13 @@ def convert_data_cetaqua_wells(data, datasource):
         }
 
         data_list.append(converted_data)
-
+    
     if 'invalid' in data:
         raise ValueError('Invalid data')
 
     return data_list
+
+
 ############################################################################################################################
 ############################################################################################################################
 
