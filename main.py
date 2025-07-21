@@ -1481,7 +1481,7 @@ def convert_data_hst_rainfall_forecast(data):
             "id": "urn:ngsi-ld:WeatherForecast:DE-HST-rainfall-forecast-OPCUA",
             "type": "WeatherForecast",
             "dataProvider": "HST",
-            "dateCreated": formated_date,
+            "dateIssued": formated_date,
             "description": forecastPeriod,
             "precipitation": value,
             "location": {
