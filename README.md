@@ -12,7 +12,7 @@
 
 ## Overview
 
-The Waterverse Data Converters Docker is a Data Harmonization Tool designed to transform input data into **NGSI-LD** format using **FIWARE Smart Data Models (SDMs)**. It works as an API endpoint, accepting POST requests with data to harmonize. The tool supports multiple pilots and diverse unstructured data, and it is fully integrated with WDME pipelines to automate harmonization of large datasets efficiently, improving interoperability and data quality within the WATERVERSE platform.
+The Waterverse Data Converters is a Data Harmonization Tool designed to transform input data into **NGSI-LD** format using **FIWARE Smart Data Models (SDMs)**. It works as an API endpoint, accepting POST requests with data to harmonize. The tool supports multiple pilots and diverse unstructured data, and it is fully integrated with WDME pipelines to automate harmonization of large datasets efficiently, improving interoperability and data quality within the WATERVERSE platform.
 
 ## Functionality
 
