@@ -1,4 +1,4 @@
-# Waterverse Data Converters Docker (User Guide)
+# Waterverse Data Converters (User Guide)
 
 ## Table of Contents
 
